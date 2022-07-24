@@ -1,3 +1,46 @@
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  namespace: istio-system
+  name: remote-emco-vsvc
+spec:
+  hosts:
+  - "*"
+  gateways:
+  - hello-gateway
+  http:
+  - match:
+    - uri:
+        prefix: /projects
+    route:
+    - destination:
+        host: emco.cluster3
+        port:
+          number: 8000
+
+
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: emco-allow-user
+  namespace: istio-system
+spec:
+  selector:
+    matchLabels:
+      app: istio-ingressgateway
+  action: ALLOW
+  rules:
+  - to:
+    - operation:
+        paths: ["/projects" ]
+    when:
+      - key: request.auth.claims[role]
+        values: ["company2"]
+
+---
+
 apiVersion: networking.istio.io/v1alpha3
 kind: ServiceEntry
 metadata:
@@ -24,7 +67,7 @@ spec:
   # This is the routable address of the ingress gateway in cluster2 that
   # sits in front of sleep.foo service. Traffic from the sidecar will be
   # routed to this address.
-  - address: 192.168.121.192 
+  - address: 192.168.121.192
     ports:
       tcp: 30415
 
