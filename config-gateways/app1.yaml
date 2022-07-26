@@ -28,25 +28,13 @@ spec:
   hosts:
   - "app1.example.com"
   gateways:
-  - hello-gateway
+  - app1-gateway
   http:
-  - match:
-    - uri:
-        prefix: /headers
-    route:
+  - route:
     - destination:
         host: httpbin.bar.cluster2
         port:
           number: 8000
-  - match:
-    - uri:
-        prefix: /status
-    route:
-    - destination:
-        host: httpbin.bar.cluster2
-        port:
-          number: 8000
-
 ---
 
 apiVersion: networking.istio.io/v1alpha3

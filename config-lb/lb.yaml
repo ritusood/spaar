@@ -1,9 +1,3 @@
-
-
-
-
----
-
 apiVersion: networking.istio.io/v1alpha3
 kind: ServiceEntry
 metadata:
@@ -32,7 +26,6 @@ spec:
     ports:
       tcp: 30016
 
-
 ---
 apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
@@ -43,7 +36,7 @@ spec:
   hosts:
   - "app1.example.com"
   gateways:
-  - hello-gateway
+  - app1-gateway
   http:
   - route:
     - destination:

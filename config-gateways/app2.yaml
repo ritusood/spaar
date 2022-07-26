@@ -8,17 +8,13 @@ spec:
   hosts:
   - "app2.example.com"
   gateways:
-  - hello-gateway
+  - app2-gateway
   http:
-  - match:
-    - uri:
-        prefix: /projects
-    route:
+  - route:
     - destination:
         host: app2.cluster3
         port:
           number: 8000
-
 
 ---
 apiVersion: security.istio.io/v1beta1
