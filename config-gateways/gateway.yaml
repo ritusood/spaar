@@ -44,7 +44,7 @@ spec:
       name: http
       protocol: HTTP
     hosts:
-    - "app1.example.com"
+    - "app2.example.com"
 
 ---
 
