@@ -1,0 +1,54 @@
+
+
+
+
+---
+
+apiVersion: networking.istio.io/v1alpha3
+kind: ServiceEntry
+metadata:
+  name: httpbin-bar-cluster3
+spec:
+  hosts:
+  # DNS name selected for the service
+  - httpbin.bar.cluster3
+  # Treat remote cluster services as part of the service mesh
+  # as all clusters in the service mesh share the same root of trust.
+  location: MESH_INTERNAL
+  ports:
+  - name: tcp
+    number: 8000
+    protocol: TCP
+  resolution: DNS
+  addresses:
+  # the IP address to which httpbin.bar.cluster2 will resolve to
+  # must be unique for each remote service, within a given cluster.
+  # This address need not be routable. Traffic for this IP will be captured
+  # by the sidecar and routed appropriately.
+  - 240.0.0.4
+  endpoints:
+  # This is the routable address of the ingress gateway in cluster3 that
+  - address: 192.168.121.192
+    ports:
+      tcp: 30016
+
+
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  namespace: istio-system
+  name: app1-vs
+spec:
+  hosts:
+  - "app1.example.com"
+  gateways:
+  - hello-gateway
+  http:
+  - route:
+    - destination:
+        host: httpbin.bar.cluster2
+      weight: 50
+    - destination:
+        host: httpbin.bar.cluster3
+      weight: 50
