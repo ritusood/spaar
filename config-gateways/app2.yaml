@@ -1,9 +1,30 @@
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  namespace: istio-system
+  name: app2-vs
+spec:
+  hosts:
+  - "app2.example.com"
+  gateways:
+  - hello-gateway
+  http:
+  - match:
+    - uri:
+        prefix: /projects
+    route:
+    - destination:
+        host: app2.cluster3
+        port:
+          number: 8000
+
 
 ---
 apiVersion: security.istio.io/v1beta1
 kind: AuthorizationPolicy
 metadata:
-  name: allow-user
+  name: app2-allow-user
   namespace: istio-system
 spec:
   selector:
@@ -13,50 +34,21 @@ spec:
   rules:
   - to:
     - operation:
-        hosts: ["app1.example.com:32505"]
+        hosts: ["app2.example.com:32505"]
     when:
       - key: request.auth.claims[role]
-        values: ["company1"]
-
----
-apiVersion: networking.istio.io/v1alpha3
-kind: VirtualService
-metadata:
-  namespace: istio-system
-  name: app1-vs
-spec:
-  hosts:
-  - "app1.example.com"
-  gateways:
-  - hello-gateway
-  http:
-  - match:
-    - uri:
-        prefix: /headers
-    route:
-    - destination:
-        host: httpbin.bar.cluster2
-        port:
-          number: 8000
-  - match:
-    - uri:
-        prefix: /status
-    route:
-    - destination:
-        host: httpbin.bar.cluster2
-        port:
-          number: 8000
+        values: ["company2"]
 
 ---
 
 apiVersion: networking.istio.io/v1alpha3
 kind: ServiceEntry
 metadata:
-  name: httpbin-bar
+  name: app2-se
 spec:
   hosts:
   # DNS name selected for the service
-  - httpbin.bar.cluster2
+  - app2.cluster3
   # Treat remote cluster services as part of the service mesh
   # as all clusters in the service mesh share the same root of trust.
   location: MESH_INTERNAL
@@ -70,13 +62,12 @@ spec:
   # must be unique for each remote service, within a given cluster.
   # This address need not be routable. Traffic for this IP will be captured
   # by the sidecar and routed appropriately.
-  - 240.0.0.2
+  - 240.0.0.3
   endpoints:
   # This is the routable address of the ingress gateway in cluster2 that
   # sits in front of sleep.foo service. Traffic from the sidecar will be
   # routed to this address.
-  - address: 192.168.121.187
+  - address: 192.168.121.192
     ports:
-      tcp: 31211
-
+      tcp: 30415
 
