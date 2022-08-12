@@ -1,0 +1,53 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: gateway-lb-customer1
+  namespace: istio-system-lb
+spec:
+  selector:
+    istio: ingressgateway-lb
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "app1.customer1.com"
+    - "app2.customer1.com"
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    tls:
+      mode: PASSTHROUGH
+    hosts:
+    - "app1.customer1.com"
+    - "app2.customer1.com"
+
+
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: gateway-lb-customer2
+  namespace: istio-system-lb
+spec:
+  selector:
+    istio: ingressgateway-lb
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "app1.customer2.com"
+    - "app2.customer2.com"
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    tls:
+      mode: PASSTHROUGH
+    hosts:
+    - "app1.customer2.com"
+    - "app2.customer2.com"

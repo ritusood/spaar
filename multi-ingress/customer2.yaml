@@ -1,0 +1,118 @@
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  namespace: istio-system-lb
+  name: customer2-vsvc
+spec:
+  hosts:
+  - "app1.customer2.com"
+  - "app2.customer2.com"
+  gateways:
+  - gateway-lb-customer2
+  http:
+  - route:
+    - destination:
+        host: istio-ingressgateway-c2.istio-system-c2.svc.cluster.local
+  tls:
+  - match:
+    - port: 443
+      sniHosts:
+      - app1.customer2.com
+      - app2.customer2.com
+    route:
+    - destination:
+        host: istio-ingressgateway-c2.istio-system-c2.svc.cluster.local
+        port:
+          number: 443
+
+---
+
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: gateway-customer2-app1
+  namespace: istio-system-c2
+spec:
+  selector:
+    istio: ingressgateway-c2
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "app1.customer2.com"
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    tls:
+      mode: SIMPLE
+      credentialName: c2-app1-credential
+    hosts:
+    - "app1.customer2.com"
+---
+
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  namespace: istio-system-c2
+  name:  customer2-app1-vsvc
+spec:
+  hosts:
+  - "app1.customer2.com"
+  gateways:
+  - gateway-customer2-app1
+  http:
+  - route:
+    - destination:
+        host: emco.cluster3
+        port:
+          number: 8000
+
+---
+
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: gateway-customer2-app2
+  namespace: istio-system-c2
+spec:
+  selector:
+    istio: ingressgateway-c2
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "app2.customer2.com"
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    tls:
+      mode: SIMPLE
+      credentialName: c2-app2-credential
+    hosts:
+    - "app2.customer2.com"
+---
+
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  namespace: istio-system-c2
+  name:  customer2-app2-vsvc
+spec:
+  hosts:
+  - "app2.customer2.com"
+  gateways:
+  - gateway-customer2-app2
+  http:
+  - route:
+    - destination:
+        host: httpbin.bar.cluster2
+        port:
+          number: 8000
+
