@@ -12,8 +12,7 @@ spec:
       name: http
       protocol: HTTP
     hosts:
-    - "app1.customer1.com"
-    - "app2.customer1.com"
+    - "*.customer1.com"
   - port:
       number: 443
       name: https
@@ -21,8 +20,7 @@ spec:
     tls:
       mode: PASSTHROUGH
     hosts:
-    - "app1.customer1.com"
-    - "app2.customer1.com"
+    - "*.customer1.com"
 
 
 ---

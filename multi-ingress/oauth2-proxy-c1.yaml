@@ -1,0 +1,39 @@
+config:
+  clientID: "oauth2-proxy-c1"
+  clientSecret: "lsuaCKsXRCQ0gID8BZHYK8tfAMlxP1cR"
+  cookieSecure: false
+  cookie-httponly: false
+  cookieName: "my-cookie"
+  cookieSecret: "UmRaMTlQajM1a2ordWFYRnlJb2tjWEd2MVpCK2grOFM="
+  configFile: |-
+    provider = "oidc"
+    oidc_issuer_url="http://192.168.121.24:30501/realms/customer1"
+    profile_url="http://192.168.121.24:30501/realms/customer1/protocol/openid-connect/userinfo"
+    validate_url="http://192.168.121.24:30501/realms/customer1/protocol/openid-connect/userinfo"
+    scope="openid email profile"
+    pass_host_header = true
+    reverse_proxy = true
+    auth_logging = true
+    cookie_httponly = false
+    cookie_refresh = "4m"
+    cookie_secure = false
+    email_domains = "*"
+    pass_access_token = true
+    pass_authorization_header = true
+    request_logging = true
+    #session_store_type = "redis"
+    set_authorization_header = true
+    set_xauthrequest = true
+    silence_ping_logging = true
+    skip_provider_button = true
+    skip_auth_strip_headers = false
+    skip_jwt_bearer_tokens = true
+    ssl_insecure_skip_verify = true
+    insecure_oidc_allow_unverified_email="true"
+    insecure_oidc_skip_nonce = "true"
+    standard_logging = true
+    redirect_url="https://customer1.com:31990/oauth2/callback"
+    redeem_url="http://192.168.121.24:30501/realms/customer1/protocol/openid-connect/token"
+    upstreams = [ "static://200" ]
+    whitelist_domains = [".customer1.com:*" ]
+    cookie_domains = ["customer1.com"]

@@ -1,0 +1,96 @@
+apiVersion: security.istio.io/v1beta1
+kind: RequestAuthentication
+metadata:
+  name: request-keycloak-auth-c1
+  namespace: istio-system-c1
+spec:
+  selector:
+    matchLabels:
+      istio: ingressgateway-c1
+  jwtRules:
+  - issuer: "http://192.168.121.24:30501/realms/customer1"
+    jwksUri: "http://192.168.121.24:30501/realms/customer1/protocol/openid-connect/certs"
+
+---
+# Send traffic through oauth2-proxy
+kind: AuthorizationPolicy
+apiVersion: security.istio.io/v1beta1
+metadata:
+  name: ext-authz-oauth2-proxy
+  namespace: istio-system-c1
+spec:
+  selector:
+    matchLabels:
+      istio: ingressgateway-c1
+  action: CUSTOM
+  provider:
+    name: oauth2-proxy-c1
+  rules:
+  - to:
+    - operation:
+        notPaths: ["/realms/*"]
+
+
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: redirect-gateway
+  namespace: istio-system-c1
+spec:
+  selector:
+    istio: ingressgateway-c1
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "customer1.com"
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    tls:
+      mode: SIMPLE
+      credentialName: c1-app1-credential
+    hosts:
+    - "customer1.com"
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  namespace: istio-system-c1
+  name: redirect-vs
+spec:
+  hosts:
+  - "customer1.com"
+  gateways:
+  - redirect-gateway
+  http:
+  - match:
+    - uri:
+        prefix: /oauth2/callback
+    route:
+    - destination:
+        host: oauth2-proxy.istio-system-c1.svc.cluster.local
+        port:
+          number: 80
+
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-user-app1
+  namespace: istio-system-c1
+spec:
+  selector:
+    matchLabels:
+      app: istio-ingressgateway
+  action: ALLOW
+  rules:
+  - to:
+    - operation:
+        hosts: ["app1.customer1.com:31508", "app1.customer1.com:30873", "app1.customer1.com"]
+
+
