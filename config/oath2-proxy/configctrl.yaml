@@ -1,0 +1,23 @@
+apiVersion: kncc.k8sappconfig.com.gitlab.com/v1alpha1
+kind: ConfigCtrl
+metadata:
+  name: istio-cert-cr-c1
+  namespace: default
+spec:
+  resource:
+    name: istio
+    namespace: istio-system
+  patch:
+    - key: |
+        mesh:
+          extensionProviders
+      value: |
+        - name: oauth2-proxy-{{ (datasource "data").namespace }}
+          envoyExtAuthzHttp:
+            service: oauth2-proxy.{{ (datasource "data").namespace }}.svc.cluster.local
+            port: 80
+            timeout: 1.5s\n    
+            includeRequestHeadersInCheck: [\"authorization\", \"cookie\"]
+            headersToUpstreamOnAllow: [\"x-forwarded-access-token\", \"authorization\", \"path\", \"x-auth-request-user\", \"x-auth-request-email\",\"x-auth-request-access-token\"]
+            includeAdditionalHeadersInCheck:
+              X-Auth-Request-Redirect:'%REQ(x-forwarded-proto)%://%REQ(:authority)%%REQ(:path)%' 

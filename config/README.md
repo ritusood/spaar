@@ -1,5 +1,53 @@
 # Config
 
+## Overview of steps
+
+
+Steps for setting up Scenario 1 Demo
+1.	Bring up 4 clusters
+2.	Prepare clusters with common elements
+    a.	Istio Ingress Proxy Gateway (for LB)
+    b.	VPN Gateway
+3.	For each new customer:
+a.	Inputs  
+i.	Domain name, namespace, 
+ii.	Set of Public DNS servers info, 
+iii.	Set of private DNS server (PowerDNS) info
+b.	Get cluster names for the customer and do below steps for each cluster
+i.	Add Gateway and VirtualService resource for the outer Istio Ingress Proxy (LB)
+ii.	Create namespace for the customer
+iii.	Deploy keycloak broker for the customer
+iv.	Add realm for the customer in Keycloak broker
+v.	Deploy Istio Ingress gateway in the new namespace
+vi.	Deploy oauth2-proxy in the new namespace
+vii.	Configure oauth2-proxy
+viii.	Configure Keycloak
+ix.	Edit configmap of Ingress Proxy (LB) to add oauth2-proxy extensionProvider
+x.	If Public IP then deploy and configure VPN gateway else Configure common VPN Gateway for customer specific info (GRE tunnels, iptables etc.)
+
+4.	Add customer DC
+a.	Inputs - 
+i.	Primary ZTNA instance to connect 
+ii.	Secondary ZTNA instance(optional)
+b.	Automate IPSec tunnel creation b/w ZTNA and DC for both Primary and secondary instances
+5.	Add an app per customer:
+a.	Input – ZTNA instances to configure for this app, external domain name for the app, port number assignment
+b.	Input - Internal application IP addresses or domain names.
+c.	Update Public DNS Server (try this out)
+i.	Update Public IP
+d.	Istio configuration 
+i.	Create Gateway and Virtual Service 
+ii.	Create Public key/ Private key pair and then create secret in customer namespace (cert-manager reachability info)
+iii.	Add Gateway and VirtualService resource for the inner Istio Ingress Proxy for the app
+iv.	Create Service entries for the app running on external cluster if IP address or if domain name update the coreDNS.
+1.	VirtualService with host IP address (try this out)
+2.	Check Istio DNS capabilities, check whether Virtual service can use external domain name if DNS can be resolved.
+6.	Attach roles authorization Per application (Check users group(?) if possible)
+a.	Input – application name, role
+b.	Add Authorization policy for the role
+
+
+
 ## Setup environment
 
 ### Install helm
@@ -79,8 +127,7 @@ Create namespace for the customer
 
  curl --location --request POST 'http://<keycloak url>/auth/realms/master/protocol/openid-connect/token' --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'grant_type=password' --data-urlencode 'client_id=admin-cli' --data-urlencode 'username=admin' --data-urlencode 'password=admin' --data-urlencode 'client_secret=<secret>'
 
- 192.168.121.187
-
+ 
 ```
 
 
@@ -92,3 +139,14 @@ helm repo add oauth2-proxy https://oauth2-proxy.github.io/manifests
 helm install --namespace c1-ns --values oauth2-proxy-config.svc.yaml oauth2-proxy oauth2-proxy/oauth2-proxy
 
 ```
+
+ wget https://github.com/hairyhenderson/gomplate/releases/download/v3.11.2/gomplate_linux-amd64
+  mv gomplate_linux-amd64 gomplate
+
+
+gomplate -d data=./inner/c1/keycloak-data.yaml -f ./keycloak/keycloak.yaml | kubectl apply -f -
+
+ jq '.realm = "customer1" | .clients[].redirectUris[0] = "http://customer1.com:31519/*" | .clients[].redirectUris[1] = "https://customer1.com:31518/*"'  ../../keycloak/releam.json  > releam.json
+
+
+ helm install --namespace c1-ns --values inner/c1/oauth2-cfg.yaml oauth2-proxy oauth2-proxy/oauth2-proxy

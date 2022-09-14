@@ -1,0 +1,5 @@
+{
+    "customer-name": "customer1",
+    "redirectUri-http": "http://customer1.com:31519/*",
+    "redirectUri-https": "https://customer1.com:31990/*"
+}
