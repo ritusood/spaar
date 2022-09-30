@@ -1,0 +1,25 @@
+apiVersion: lfn.edge-5g.com.github.com/v1alpha1
+kind: RestCr
+metadata:
+  name: roles
+spec:
+  # TODO(user): Add fields here
+  url:
+    fullPath: "http://10.99.131.227:8080/realms/customer1/client/oauth2-proxy/roles"
+  target:
+    type:  svc
+    svc:
+        ns: c1-ns
+        name: keycloak
+
+  version: HTTP1_1
+  headers: 
+    - name: Content-Type
+      value: application/json
+    - name: Authorization
+      value: bearer "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI3TlM3QzVUMWxPdDk2MEhZNXFRWnBJTUY0WXF1R1ctdkpyb1hweXo4c3pRIn0.eyJleHAiOjE2NjQ0ODI5MzcsImlhdCI6MTY2NDQ4MjYzNywianRpIjoiODFlZDBkNTMtZGE2Ny00NWVkLTg0NzctNzhiNTNjODgyODNkIiwiaXNzIjoiaHR0cDovLzEwLjk5LjEzMS4yMjc6ODA4MC9yZWFsbXMvY3VzdG9tZXIxIiwiYXVkIjoiYWNjb3VudCIsInN1YiI6Ijk1YzBiMTc4LTFiMDgtNGY4OS1iZDRiLTlhOWQ4ODQ2MzdiOCIsInR5cCI6IkJlYXJlciIsImF6cCI6Im9hdXRoMi1wcm94eSIsImFjciI6IjEiLCJhbGxvd2VkLW9yaWdpbnMiOlsiKiJdLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsib2ZmbGluZV9hY2Nlc3MiLCJkZWZhdWx0LXJvbGVzLWN1c3RvbWVyMSIsInVtYV9hdXRob3JpemF0aW9uIiwidXNlciJdfSwicmVzb3VyY2VfYWNjZXNzIjp7ImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoicHJvZmlsZSBlbWFpbCIsImNsaWVudEhvc3QiOiIxMC4yNDQuMC42MSIsImVtYWlsX3ZlcmlmaWVkIjpmYWxzZSwiY2xpZW50SWQiOiJvYXV0aDItcHJveHkiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJzZXJ2aWNlLWFjY291bnQtb2F1dGgyLXByb3h5IiwiY2xpZW50QWRkcmVzcyI6IjEwLjI0NC4wLjYxIn0.kMIEXzpBhQrC3XUXhVtCW8iizyYDHcmr1nZwd2OOHKj7pw0zsr2YoNtgNUJxzx9GBXY3_1DCWwjcUjVf6iVYrNgMtHYwTEWcd8tkCAKK4i8dq3P3yolU9TZTNnf_6FuJbptJ4HwIBIQKrp9eyP90s3j8uX766NYfysluffec_4l0cJJiwTcuaxd_XrHNHg8PlwJP2508XbAnENSNvVCwCIKhq1DebiNtWA9EaUwb9PEo33-GYcMxWtYdBlVLyQD5gzcURkItXX8J9y3iFKhE-mYs6Yjvatk4CyTsn7foECyAcX0ORu0o048V8zu7wG7JyYJuXnOYMmZBezrfcABdvQ"      
+
+  contents:
+    -  "{\"name\": \"User\",\"clientRole\": true}"
+
+

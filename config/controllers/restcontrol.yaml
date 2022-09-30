@@ -1,0 +1,524 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    control-plane: controller-manager
+  name: knrc-system
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    cert-manager.io/inject-ca-from: knrc-system/knrc-serving-cert
+    controller-gen.kubebuilder.io/version: v0.7.0
+  name: restcrs.lfn.edge-5g.com.github.com
+spec:
+  conversion:
+    strategy: Webhook
+    webhook:
+      clientConfig:
+        service:
+          name: knrc-webhook-service
+          namespace: knrc-system
+          path: /convert
+      conversionReviewVersions:
+      - v1
+  group: lfn.edge-5g.com.github.com
+  names:
+    kind: RestCr
+    listKind: RestCrList
+    plural: restcrs
+    singular: restcr
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: RestCr is the Schema for the restcrs API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: RestCrSpec defines the desired state of RestCr
+            properties:
+              contents:
+                items:
+                  type: string
+                type: array
+              headers:
+                items:
+                  description: 'EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN! NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.'
+                  properties:
+                    name:
+                      type: string
+                    value:
+                      type: string
+                  required:
+                  - name
+                  - value
+                  type: object
+                type: array
+              target:
+                properties:
+                  svc:
+                    properties:
+                      name:
+                        type: string
+                      ns:
+                        type: string
+                    required:
+                    - name
+                    - ns
+                    type: object
+                  type:
+                    enum:
+                    - svc
+                    - pods
+                    type: string
+                type: object
+              tls:
+                properties:
+                  clientCertificate:
+                    properties:
+                      name:
+                        type: string
+                      ns:
+                        type: string
+                    required:
+                    - name
+                    - ns
+                    type: object
+                  serverTrustCA:
+                    properties:
+                      name:
+                        type: string
+                      ns:
+                        type: string
+                    required:
+                    - name
+                    - ns
+                    type: object
+                type: object
+              url:
+                properties:
+                  fullPath:
+                    type: string
+                  host:
+                    type: string
+                  path:
+                    type: string
+                  port:
+                    type: integer
+                  scheme:
+                    type: string
+                type: object
+              version:
+                enum:
+                - HTTP1_1
+                - HTTP2_0
+                type: string
+            required:
+            - url
+            - version
+            type: object
+          status:
+            description: RestCrStatus defines the observed state of RestCr
+            properties:
+              commonErr:
+                type: string
+              numEP:
+                type: integer
+              response:
+                additionalProperties:
+                  properties:
+                    attempts:
+                      type: integer
+                    code:
+                      type: integer
+                    content:
+                      type: string
+                    ep:
+                      type: string
+                    headers:
+                      items:
+                        description: 'EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN! NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.'
+                        properties:
+                          name:
+                            type: string
+                          value:
+                            type: string
+                        required:
+                        - name
+                        - value
+                        type: object
+                      type: array
+                    reason:
+                      type: string
+                  required:
+                  - ep
+                  type: object
+                type: object
+            required:
+            - numEP
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: knrc-controller-manager
+  namespace: knrc-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: knrc-leader-election-role
+  namespace: knrc-system
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - endpoints
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: knrc-manager-role
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - endpoints
+  verbs:
+  - create
+  - patch
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - lfn.edge-5g.com.github.com
+  resources:
+  - restcrs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - lfn.edge-5g.com.github.com
+  resources:
+  - restcrs/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - lfn.edge-5g.com.github.com
+  resources:
+  - restcrs/status
+  verbs:
+  - get
+  - patch
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: knrc-metrics-reader
+rules:
+- nonResourceURLs:
+  - /metrics
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: knrc-proxy-role
+rules:
+- apiGroups:
+  - authentication.k8s.io
+  resources:
+  - tokenreviews
+  verbs:
+  - create
+- apiGroups:
+  - authorization.k8s.io
+  resources:
+  - subjectaccessreviews
+  verbs:
+  - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: knrc-leader-election-rolebinding
+  namespace: knrc-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: knrc-leader-election-role
+subjects:
+- kind: ServiceAccount
+  name: knrc-controller-manager
+  namespace: knrc-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: knrc-manager-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: knrc-manager-role
+subjects:
+- kind: ServiceAccount
+  name: knrc-controller-manager
+  namespace: knrc-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: knrc-proxy-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: knrc-proxy-role
+subjects:
+- kind: ServiceAccount
+  name: knrc-controller-manager
+  namespace: knrc-system
+---
+apiVersion: v1
+data:
+  controller_manager_config.yaml: |
+    apiVersion: controller-runtime.sigs.k8s.io/v1alpha1
+    kind: ControllerManagerConfig
+    health:
+      healthProbeBindAddress: :8081
+    metrics:
+      bindAddress: 127.0.0.1:8080
+    webhook:
+      port: 9443
+    leaderElection:
+      leaderElect: true
+      resourceName: 76ea0ee8.github.com
+kind: ConfigMap
+metadata:
+  name: knrc-manager-config
+  namespace: knrc-system
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    control-plane: controller-manager
+  name: knrc-controller-manager-metrics-service
+  namespace: knrc-system
+spec:
+  ports:
+  - name: https
+    port: 8443
+    protocol: TCP
+    targetPort: https
+  selector:
+    control-plane: controller-manager
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: knrc-webhook-service
+  namespace: knrc-system
+spec:
+  ports:
+  - port: 443
+    targetPort: 9443
+  selector:
+    control-plane: controller-manager
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    control-plane: controller-manager
+  name: knrc-controller-manager
+  namespace: knrc-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      control-plane: controller-manager
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: manager
+      labels:
+        control-plane: controller-manager
+    spec:
+      containers:
+      - args:
+        - --config=controller_manager_config.yaml
+        command:
+        - /manager
+        image: 172.25.103.9:5000/restcontroller:latest
+        imagePullPolicy: Always
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        name: manager
+        ports:
+        - containerPort: 9443
+          name: webhook-server
+          protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 500m
+            memory: 128Mi
+          requests:
+            cpu: 10m
+            memory: 64Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+        volumeMounts:
+        - mountPath: /tmp/k8s-webhook-server/serving-certs
+          name: cert
+          readOnly: true
+        - mountPath: /controller_manager_config.yaml
+          name: manager-config
+          subPath: controller_manager_config.yaml
+      - args:
+        - --secure-listen-address=0.0.0.0:8443
+        - --upstream=http://127.0.0.1:8080/
+        - --logtostderr=true
+        - --v=10
+        image: gcr.io/kubebuilder/kube-rbac-proxy:v0.8.0
+        name: kube-rbac-proxy
+        ports:
+        - containerPort: 8443
+          name: https
+          protocol: TCP
+      securityContext:
+        runAsNonRoot: true
+      serviceAccountName: knrc-controller-manager
+      terminationGracePeriodSeconds: 10
+      volumes:
+      - name: cert
+        secret:
+          defaultMode: 420
+          secretName: webhook-server-cert
+      - configMap:
+          name: knrc-manager-config
+        name: manager-config
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: knrc-serving-cert
+  namespace: knrc-system
+spec:
+  dnsNames:
+  - knrc-webhook-service.knrc-system.svc
+  - knrc-webhook-service.knrc-system.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: knrc-selfsigned-issuer
+  secretName: webhook-server-cert
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: knrc-selfsigned-issuer
+  namespace: knrc-system
+spec:
+  selfSigned: {}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  annotations:
+    cert-manager.io/inject-ca-from: knrc-system/knrc-serving-cert
+  name: knrc-validating-webhook-configuration
+webhooks:
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: knrc-webhook-service
+      namespace: knrc-system
+      path: /validate-lfn-edge-5g-com-github-com-v1alpha1-restcr
+  failurePolicy: Fail
+  name: vrestcr.kb.io
+  rules:
+  - apiGroups:
+    - lfn.edge-5g.com.github.com
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - restcrs
+  sideEffects: None

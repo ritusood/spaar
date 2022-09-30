@@ -1,0 +1,22 @@
+apiVersion: lfn.edge-5g.com.github.com/v1alpha1
+kind: RestCr
+metadata:
+  name: token
+spec:
+  url:
+    fullPath: "http://10.99.131.227:8080/realms/customer1/protocol/openid-connect/token?grant_type=client_credentials&client_id=oauth2-proxy&client_secret=lsuaCKsXRCQ0gID8BZHYK8tfAMlxP1cR"
+  target:
+    type:  svc
+    svc:
+        ns: c1-ns
+        name: keycloak
+
+  version: HTTP1_1
+  headers: 
+    - name: Content-Type
+      value: application/x-www-form-urlencoded
+
+  contents:
+    -  "{grant_type=client_credentials&client_id=oauth2-proxy&client_secret=lsuaCKsXRCQ0gID8BZHYK8tfAMlxP1cR}"
+
+

@@ -2,6 +2,11 @@
 
 ## Overview of steps
 
+Some questions:
+1)	On step 3bx is Public IP for the customer an input?
+2)	Step 4ai will this input be cluster name?
+3)	5bc not sure what this step was?
+4)	Step 5div want to confirm that coreDNS needs to be updated in this step. AFAIK KNCC can’t be used for that, is that correct?
 
 Steps for setting up Scenario 1 Demo
 1.	Bring up 4 clusters
@@ -10,36 +15,35 @@ Steps for setting up Scenario 1 Demo
     b.	VPN Gateway
 3.	For each new customer:
 a.	Inputs  
-i.	Domain name, namespace, 
-ii.	Set of Public DNS servers info, 
-iii.	Set of private DNS server (PowerDNS) info
+    i.	Domain name, namespace, 
+    ii.	Set of Public DNS servers info, 
+    iii.	Set of private DNS server (PowerDNS) info
 b.	Get cluster names for the customer and do below steps for each cluster
-i.	Add Gateway and VirtualService resource for the outer Istio Ingress Proxy (LB)
-ii.	Create namespace for the customer
-iii.	Deploy keycloak broker for the customer
-iv.	Add realm for the customer in Keycloak broker
-v.	Deploy Istio Ingress gateway in the new namespace
-vi.	Deploy oauth2-proxy in the new namespace
-vii.	Configure oauth2-proxy
-viii.	Configure Keycloak
-ix.	Edit configmap of Ingress Proxy (LB) to add oauth2-proxy extensionProvider
-x.	If Public IP then deploy and configure VPN gateway else Configure common VPN Gateway for customer specific info (GRE tunnels, iptables etc.)
+    i.	Add Gateway and VirtualService resource for the outer Istio Ingress Proxy (LB)
+    ii.	Create namespace for the customer
+    iii. Deploy keycloak broker for the customer
+    iv.	Deploy Istio Ingress gateway in the new namespace
+    v.	Deploy oauth2-proxy in the new namespace
+    vi.	Configure oauth2-proxy
+    vii. Configure Keycloak
+    viii.	Edit configmap of Ingress Proxy (LB) to add oauth2-proxy extensionProvider
+    ix.	If Public IP then deploy and configure VPN gateway else Configure common VPN Gateway for customer specific info (GRE tunnels, iptables etc.)
 
 4.	Add customer DC
-a.	Inputs - 
-i.	Primary ZTNA instance to connect 
-ii.	Secondary ZTNA instance(optional)
-b.	Automate IPSec tunnel creation b/w ZTNA and DC for both Primary and secondary instances
+    a.	Inputs - 
+        i.	Primary ZTNA instance to connect 
+        ii.	Secondary ZTNA instance(optional)
+    b.	Automate IPSec tunnel creation b/w ZTNA and DC for both Primary and secondary instances
 5.	Add an app per customer:
-a.	Input – ZTNA instances to configure for this app, external domain name for the app, port number assignment
-b.	Input - Internal application IP addresses or domain names.
-c.	Update Public DNS Server (try this out)
+    a.	Input – ZTNA instances to configure for this app, external domain name for the app, port number assignment
+    b.	Input - Internal application IP addresses or domain names.
+    c.	Update Public DNS Server (try this out)
 i.	Update Public IP
 d.	Istio configuration 
-i.	Create Gateway and Virtual Service 
-ii.	Create Public key/ Private key pair and then create secret in customer namespace (cert-manager reachability info)
-iii.	Add Gateway and VirtualService resource for the inner Istio Ingress Proxy for the app
-iv.	Create Service entries for the app running on external cluster if IP address or if domain name update the coreDNS.
+    i.	Create Gateway and Virtual Service 
+    ii.	Create Public key/ Private key pair and then create secret in customer namespace (cert-manager reachability info)
+    iii.	Add Gateway and VirtualService resource for the inner Istio Ingress Proxy for the app
+    iv.	Create Service entries for the app running on external cluster if IP address or if domain name update the coreDNS.
 1.	VirtualService with host IP address (try this out)
 2.	Check Istio DNS capabilities, check whether Virtual service can use external domain name if DNS can be resolved.
 6.	Attach roles authorization Per application (Check users group(?) if possible)
@@ -69,6 +73,65 @@ helm repo update
 ```
 
 ### Deploy Istio
+
+```
+
+  export ISTIO_VERSION=1.15.1
+  curl -L https://istio.io/downloadIstio | ISTIO_VERSION=$ISTIO_VERSION sh -
+  export PATH=$PATH:/home/vagrant/istio-1.15.1/bin
+  istioctl version
+  istioctl install -f istio-cfg.yaml
+
+
+
+```
+
+
+
+```
+
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+metadata:
+  name: istiooperator-config
+  namespace: istio-system
+spec:
+  profile: minimal
+  meshConfig:
+    accessLogFile: /dev/stdout
+    enableAutoMtls: true
+    defaultConfig:
+      proxyMetadata:
+        # Enable Istio agent to handle DNS
+        ISTIO_META_DNS_CAPTURE: "true"
+  components:
+    # Enable Istio Ingress gateway
+    ingressGateways:
+    - name: istio-ingressgateway
+      enabled: true
+      k8s:
+        env:
+          - name: ISTIO_META_ROUTER_MODE
+            value: "sni-dnat"
+        service:
+          type: NodePort
+          ports:
+            - port: 80
+              targetPort: 8080
+              name: http2
+            - port: 443
+              targetPort: 8443
+              name: https
+            - port: 15443
+              targetPort: 15443
+              name: tls
+              nodePort: 32001
+  values:
+    global:
+      pilotCertProvider: istiod
+
+
+```
 
 ## LB Setup
 
