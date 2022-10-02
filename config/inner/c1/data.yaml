@@ -1,4 +1,3 @@
-customerID: c1
 secret: c1-keycloak-cert
 namespace: c1-ns
 customer-name: customer1

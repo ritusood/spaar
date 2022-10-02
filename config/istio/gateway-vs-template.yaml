@@ -5,7 +5,7 @@ metadata:
   namespace: {{ strings.Quote (datasource "data").namespace }}
 spec:
   selector:
-    istio: ingressgateway-{{ strings.Quote (datasource "data").customerID }}
+    istio: ingressgateway-{{ strings.Quote (datasource "data").customer-name }}
   servers:
   - port:
       number: 80

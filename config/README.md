@@ -190,6 +190,11 @@ Create namespace for the customer
 
  curl --location --request POST 'http://<keycloak url>/auth/realms/master/protocol/openid-connect/token' --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'grant_type=password' --data-urlencode 'client_id=admin-cli' --data-urlencode 'username=admin' --data-urlencode 'password=admin' --data-urlencode 'client_secret=<secret>'
 
+
+kubectl create cm -n c1-ns keycloak-configmap --from-file=inner/c1/realm.json
+jq '.realm = "customer1" | .clients[].redirectUris[0] = "http://customer1.com:31519/*" | .clients[].redirectUris[1] = "https://customer1.com:31518/*"'  ../../keycloak/releam.json  > releam.json
+gomplate -d data=./inner/c1/keycloak-data.yaml -f ./keycloak/keycloak.yaml | kubectl apply -f -
+
  
 ```
 
