@@ -1,11 +1,12 @@
+---
 apiVersion: networking.istio.io/v1alpha3
 kind: Gateway
 metadata:
-  name: {{ strings.Quote (datasource "data").appName }}
-  namespace: {{ strings.Quote (datasource "data").namespace }}
+  name: {{ (datasource "data").appName }}
+  namespace: {{ (datasource "data").namespace }}
 spec:
   selector:
-    istio: ingressgateway-{{ strings.Quote (datasource "data").customer-name }}
+    istio: ingressgateway
   servers:
   - port:
       number: 80
@@ -19,7 +20,7 @@ spec:
       protocol: HTTPS
     tls:
       mode: SIMPLE
-      credentialName: {{ strings.Quote (datasource "data").appName }}
+      credentialName: {{ (datasource "data").appName }}
     hosts:
     - {{ strings.Quote (datasource "data").appDomainName }}
 ---
@@ -27,13 +28,13 @@ spec:
 apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
 metadata:
-  name: {{ strings.Quote (datasource "data").appName }}
-  namespace: {{ strings.Quote (datasource "data").namespace }}
+  name: {{ (datasource "data").appName }}
+  namespace: {{ (datasource "data").namespace }}
 spec:
   hosts:
   - {{ strings.Quote (datasource "data").appDomainName }}
   gateways:
-  - {{ strings.Quote (datasource "data").appName }}
+  - {{  (datasource "data").appName }}
   http:
   - route:
     - destination:

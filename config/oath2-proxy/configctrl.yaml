@@ -1,8 +1,8 @@
 apiVersion: kncc.k8sappconfig.com.gitlab.com/v1alpha1
 kind: ConfigCtrl
 metadata:
-  name: istio-cert-cr-c1
-  namespace: default
+  name: istio-oauth2-proxy
+  namespace: {{ (datasource "data").namespace }}
 spec:
   resource:
     name: istio

@@ -11,7 +11,7 @@ spec:
   renewBefore: 360h # 15d
   subject:
     organizations:
-      - customer1
+      - {{ (datasource "data").customerName }} 
   # The use of the common name field has been deprecated since 2000 and is
   # discouraged from being used.
   commonName: {{(datasource "data").appDomainName }}

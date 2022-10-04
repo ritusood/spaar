@@ -1,0 +1,51 @@
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: gateway-lb-{{ (datasource "data").customerName }}
+  namespace: lbns
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - {{ strings.Quote (datasource "data").istioHosts }}
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    tls:
+      mode: PASSTHROUGH
+    hosts:
+    - {{ strings.Quote (datasource "data").istioHosts }}
+
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  namespace: lbns
+  name: vs-lb-{{ (datasource "data").customerName }}
+spec:
+  hosts:
+  - {{ strings.Quote (datasource "data").istioHosts }}
+  gateways:
+  - gateway-lb-{{ (datasource "data").customerName }}
+  http:
+  - route:
+    - destination:
+        host: istio-ingressgateway.{{ (datasource "data").namespace }}.svc.cluster.local
+  tls:
+  - match:
+    - port: 443
+      sniHosts:
+      - {{ strings.Quote (datasource "data").istioHosts }}
+    route:
+    - destination:
+        host: istio-ingressgateway.{{ (datasource "data").namespace }}.svc.cluster.local
+        port:
+          number: 443
+
