@@ -180,7 +180,14 @@ function create_customer_resources {
    create_istio_policies $name
 
 }
-
+function install_yq_locally {
+    if [ ! -x ./yq ]; then
+        echo 'Installing yq locally'
+        VERSION=v4.12.0
+        BINARY=yq_linux_amd64
+        wget https://github.com/mikefarah/yq/releases/download/${VERSION}/${BINARY} -O yq && chmod +x yq
+fi
+}
 ############################################################
 ############################################################
 # Main program                                             #
@@ -207,7 +214,18 @@ while getopts ":hn:" option; do
    esac
 done
 
-create_customer_resources "customer1" "c1ns" "customer1.com"
-create_app_resources "customer1" "c1ns" "customer1.com" "app1" "user" "httpbin.bar.cluster2"
-install_customer "customer1"
-echo "hello $Name!"
+#create_customer_resources "customer1" "c1ns" "customer1.com"
+#create_app_resources "customer1" "c1ns" "customer1.com" "app1" "user" "httpbin.bar.cluster2"
+#install_customer "customer1"
+install_yq_locally
+
+name=$(./yq eval '.name' values.yaml)
+echo "hello $name!"
+
+
+
+if [[ $(kubectl get ns c1ns)  ]]; then
+    echo "Available"
+else
+    echo "Error"
+fi

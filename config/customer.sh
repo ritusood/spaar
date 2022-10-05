@@ -7,26 +7,128 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+KUBE_PATH=/home/vagrant/.kube/config
+WORKING_DIR=/tmp
+
+function global_install {
+   apply_cluster   ./certs/clusterissuer.yaml
+   if [[ $(kubectl get ns lbns)  ]]; then
+      echo "Namespace lbns exists"
+   else  
+      kubectl create ns lbns 
+      echo "Namespace lbns created"
+   fi
+   helm install istio-ingressgateway -n lbns istio/gateway
+}
+
+function apply_cluster {
+#    local kubeconfig=$1
+    local file=$1
+    echo "Applying to cluster: $file"
+    kubectl apply -f $file
+    
+}
+
+function apply_cluster_namespace {
+#    local kubeconfig=$1
+    local file=$1
+    local namespace=$2
+    echo "Applying to cluster: $file"
+    kubectl apply -f $file -n $namespace
+}
+
+function delete_cluster {
+#    local kubeconfig=$1
+    local file=$1
+    local namespace=$2
+    echo "Deleting from cluster: $file"
+    kubectl delete -f $file 
+}
 
 
-function install_packages {
+function  install_prereq {
+   local name=$1
+   local namespace=$2
+   local domains=$3
+
+   echo "install_prereq"
+   if [[ $(kubectl get ns $namespace)  ]]; then
+      echo "Namespace $namespace exists"
+   else  
+      kubectl create ns $namespace 
+      echo "Namespace $namespace created"
+   fi
+   # Create Data file
+   generate_data $name $namespace $domains
+   # Create yamls for ca-issuer, istio-gateway and keycloak
+   gomplate -d data=$WORKING_DIR/data.yaml -f ./certs/ca-template.yaml > $WORKING_DIR/ca-issuer.yaml
+   helm template istio-ingressgateway -n $namespace istio/gateway > $WORKING_DIR/istio-gateway.yaml
+   kubectl create cm -n $namespace keycloak-configmap --from-file=$WORKING_DIR/realm.json -o yaml --dry-run=client > $WORKING_DIR/keycloak-cm.yaml
+   gomplate -d data=$WORKING_DIR/data.yaml -f ./keycloak/keycloak.yaml > $WORKING_DIR/keycloak.yaml
+   
+   #Create namespace and cert issuer for the customer
+    apply_cluster   $WORKING_DIR/ca-issuer.yaml
+    #Install Istio 
+    apply_cluster   $WORKING_DIR/istio-gateway.yaml
+    #Install Keycloak cm
+    apply_cluster   $WORKING_DIR/keycloak-cm.yaml
+    #Install Keycloak
+    apply_cluster   $WORKING_DIR/keycloak.yaml
+}
+
+function  install_oauth2 {
+   local name=$1
+   local namespace=$2
+
+   echo "install_oauth2"
+   generate_oauth2_data $name $namespace
+   # Install oauth2-proxy for the customer
+   gomplate -d data=$WORKING_DIR/data.yaml -f ./oath2-proxy/oauth2-proxy-template.yaml > $WORKING_DIR/oauth2-cfg-data.yaml
+   helm template --namespace $namespace --values $WORKING_DIR/oauth2-cfg-data.yaml oauth2-proxy oauth2-proxy/oauth2-proxy > $WORKING_DIR/oauth2-proxy.yaml
+   # Apply KNCC CR to update Istio Configmap for the newly installed oath2-proxy
+   gomplate -d data=$WORKING_DIR/data.yaml -f ./oath2-proxy/configctrl.yaml > $WORKING_DIR/kncc-istio-cm.yaml
+
+   sleep 10
+    #Install oauth2-proxy
+    apply_cluster_namespace   $WORKING_DIR/oauth2-proxy.yaml $namespace
+    #Update the istio cm with kncc
+    apply_cluster   $WORKING_DIR/kncc-istio-cm.yaml
+}
+
+
+function  generate_data {
     local name=$1
     local namespace=$2
     local domains=$3
 
-    kubectl create ns $namespace
-    http_port=$(kubectl -n lb-ns get service istio-ingressgateway-lb -o jsonpath='{.spec.ports[?(@.name=="http2")].nodePort}')
-    https_port=$(kubectl -n lb-ns get service istio-ingressgateway-lb -o jsonpath='{.spec.ports[?(@.name=="https")].nodePort}')
+ 
+    http_port=$(kubectl -n lbns get service istio-ingressgateway -o jsonpath='{.spec.ports[?(@.name=="http2")].nodePort}')
+    https_port=$(kubectl -n lbns get service istio-ingressgateway -o jsonpath='{.spec.ports[?(@.name=="https")].nodePort}')
     http="http://$domains:$http_port/*"
     https="https://$domains:$https_port/*"
     echo $http $https
-    jq '.realm = '\"$name\"' | .clients[].redirectUris[0] = '\"$http\"' | .clients[].redirectUris[1] = '\"$https\"''  keycloak/realm.json  > /tmp/realm.json
-    cat << NET > /tmp/keycloak-data.yaml
-    namespace: $namespace
-NET
-    gomplate -d data=/tmp/keycloak-data.yaml -f ./keycloak/keycloak.yaml | kubectl apply -f -
+    jq '.realm = '\"$name\"' | .clients[].redirectUris[0] = '\"$http\"' | .clients[].redirectUris[1] = '\"$https\"''  keycloak/realm.json  > $WORKING_DIR/realm.json
+    
+    whitelistDomains=.$domains:*
+    redirectUrl="https://$domains:$https_port/oauth2/callback"
+    istioHosts='"'*.$domains'"'
 
-    sleep 30
+    cat << NET > $WORKING_DIR/data.yaml
+namespace: $namespace
+customerName: $name
+domainName: $domains
+whitelistDomains: $whitelistDomains
+redirectUrl: $redirectUrl
+istioHosts: $istioHosts
+NET
+
+}
+
+function generate_oauth2_data {
+    local name=$1
+    local namespace=$2
+
+    clientID="oauth2-proxy-$namespace"
     hosts=`hostname -I` 
     echo $hosts
     hostip=$(echo $hosts | cut -d ' ' -f1| tr -d ' ')
@@ -35,40 +137,99 @@ NET
     echo $hostip:$kc_port
     oidcIssuerUrl="http://$hostip:$kc_port/realms/$name"
     redeemUrl="$oidcIssuerUrl/protocol/openid-connect/token"
-    whitelistDomains=.$domains:*
-    redirectUrl="https://$domains:$https_port/oauth2/callback"
-    cat << NET > /tmp/oauth2-data.yaml
-clientID: "oauth2-proxy"
-namespace: $namespace
-customer-name: $name
+    jwksUri="$oidcIssuerUrl/protocol/openid-connect/certs"
+
+    cat << NET >> $WORKING_DIR/data.yaml
+clientID: $clientID
 oidcIssuerUrl: $oidcIssuerUrl
 redeemUrl: $redeemUrl
-domainName: $domains
-whitelistDomains: $whitelistDomains
-redirectUrl: $redirectUrl
+jwksUri: $jwksUri
 clientSecret: "lsuaCKsXRCQ0gID8BZHYK8tfAMlxP1cR"
 cookieSecret: "UmRaMTlQajM1a2ordWFYRnlJb2tjWEd2MVpCK2grOFM="
-secret: c1-keycloak-cert
-whitelistDomains: $whitelistDomains
-redirectUrl: $redirectUrl
-caCommonName: customer1-ca
-appName: app1
-appDomainName: app1.customer1.com
-destinationHost: httpbin.bar.cluster2
 NET
-gomplate -d data=/tmp/oauth2-data.yaml -f ./oath2-proxy/oauth2-proxy-template.yaml > /tmp/oauth2-cfg.yaml
+
 }
 
-function usage {
-    echo "Usage: $0 -a app1:cluster1:cluster2 -b m3db:cluster1 -c app3:cluster3 create|cleanup"
+function install_istio_policies {
+   local name=$1
+   # Install Request Authentication
+   gomplate -d data=$WORKING_DIR/data.yaml -f ./istio/request-auth-template.yaml > $WORKING_DIR/outer-istio.yaml
+   # Install oauth configuration
+   gomplate -d data=$WORKING_DIR/data.yaml -f ./istio/oauth-config-template.yaml >> $WORKING_DIR/outer-istio.yaml
+   # Install outer gateway configuration for the customer
+   gomplate -d data=$WORKING_DIR/data.yaml -f ./istio/outer-gateway-vs-template.yaml >> $WORKING_DIR/outer-istio.yaml
+
+   #Install Istio resources for the customer
+    apply_cluster   $WORKING_DIR/outer-istio.yaml
 }
 
-function cleanup {
-    rm -f yq
-    rm -f *.tar.gz
-    rm -f values.yaml
-    rm -f emco-cfg.yaml
-    rm -rf $OUTPUT_DIR
+function create_app {
+   local name=$1
+   local namespace=$2
+   local domain=$3
+   local appName=$4
+   local role=$5
+   local destinationHost=$6
+
+   http_port=$(kubectl -n lbns get service istio-ingressgateway -o jsonpath='{.spec.ports[?(@.name=="http2")].nodePort}')
+   https_port=$(kubectl -n lbns get service istio-ingressgateway -o jsonpath='{.spec.ports[?(@.name=="https")].nodePort}')
+   http="$appName.$domain:$http_port"
+   https="$appName.$domain:$https_port"
+   echo $http $https
+   
+   appDomainName=$appName.$domain
+   cat << NET > $WORKING_DIR/$appName-data.yaml
+namespace: $namespace
+customerName: $name
+caCommonName: $name
+appName: $appName
+appDomainName: $appDomainName
+http: $http
+https: $https
+role: $role
+destinationHost: $destinationHost
+NET
+   gomplate -d data=$WORKING_DIR/$appName-data.yaml -f ./certs/cert-template.yaml > $WORKING_DIR/$appName-cert.yaml
+   gomplate -d data=$WORKING_DIR/$appName-data.yaml -f ./istio/app-gateway-vs-template.yaml > $WORKING_DIR/$appName-istio.yaml
+   gomplate -d data=$WORKING_DIR/$appName-data.yaml -f ./istio/app-authz-template.yaml >> $WORKING_DIR/$appName-istio.yaml
+
+    #Create cert  for the app
+    apply_cluster   $WORKING_DIR/$appName-cert.yaml
+    # Apply app istio resources including authorization
+    apply_cluster   $WORKING_DIR/$appName-istio.yaml
+}
+
+function delete_app {
+    local name=$1
+    local appName=$2
+    delete_cluster $WORKING_DIR/$appName-istio.yaml
+    delete_cluster $WORKING_DIR/$appName-cert.yaml
+    rm $WORKING_DIR/$appName-*.yaml
+}
+
+function create_customer {
+   local name=$1
+   local namespace=$2
+   local domains=$3
+
+   if [ -d "$WORKING_DIR" ]; then rm -Rf $WORKING_DIR; fi
+   mkdir -p $WORKING_DIR
+   install_prereq $name $namespace $domains
+   install_oauth2 $name $namespace
+   install_istio_policies $name
+
+}
+
+function delete_customer {
+    local name=$1
+
+    delete_cluster $WORKING_DIR/outer-istio.yaml
+    delete_cluster $WORKING_DIR/kncc-istio-cm.yaml
+    delete_cluster $WORKING_DIR/oauth2-proxy.yaml
+    delete_cluster $WORKING_DIR/keycloak.yaml
+    delete_cluster $WORKING_DIR/keycloak-cm.yaml
+    delete_cluster $WORKING_DIR/istio-gateway.yaml
+    delete_cluster $WORKING_DIR/ca-issuer.yaml
 }
 
 # Install yq for parsing yaml files. It installs it locally (current folder) if it is not
@@ -84,33 +245,41 @@ fi
 }
 
 echo "Hi"
-Name="oops"
+name="oops"
 namespace="oops"
 # list of colon sperated values
-domain_names="oops"
+domain_name="oops"
 # list of clusters colon sperated values
-pop_locations="oops"
-dedicated_gateway="oops"
+pop_location="oops"
+dedicated_gateway="false"
+app_name="oops"
+role="oops"
+destination_host="oops"
 
-while getopts ":c:n:d:p:g:" flag
+while getopts ":v:" flag
 do
     case "${flag}" in
-        n) namespace=${OPTARG};;
-        c) Name=${OPTARG};;
-        d) domain_names=${OPTARG};;
-        p) pop_locations=${OPTARG};;
-        g) dedicated_gateway=${OPTARG}
+        v) values=${OPTARG}
+           name=$(./yq eval '.name' $values)
+           namespace=$(./yq eval '.namespace' $values)
+           domain_name=$(./yq eval '.domain' $values)
+           app_name=$(./yq eval '.app' $values)
+           role=$(./yq eval '.role' $values)
+           destination_host=$(./yq eval '.host' $values)
+           dedicated_gateway=$(./yq eval '.dedicatedGateway' $values)
+           pop_location=$(./yq eval '.pop' $values);;
     esac
 done
-echo $Name $namespace $domain_names $pop_locations $dedicated_gateway
+echo $name $namespace $domain_name $pop_location $dedicated_gateway
 shift $((OPTIND-1))
 
-input="hello"
-
-#install_yq_locally
+install_yq_locally
+WORKING_DIR=/tmp/$name
 case "$1" in
-     "add" )
-        if [ "${Name}" == "oops" ] ; then
+     "prepare" )
+        global_install;;
+     "create" )
+        if [ "${name}" == "oops" ] ; then
             echo -e "ERROR - Customer name is required"
             exit
         fi
@@ -118,17 +287,21 @@ case "$1" in
             echo -e "Error - Namespace is required"
             exit
         fi
-        if [ "${domain_names}" == "oops" ] ; then
+        if [ "${domain_name}" == "oops" ] ; then
             echo -e "Atleast one 1 domain name must be provided"
             exit
         fi
-        
-        install_packages $Name $namespace $domain_names
-        echo "Done create!!!"
-        
+        create_customer $name $namespace $domain_name
+        echo "Done create!!!"        
         ;;
     "delete" )
-        cleanup
+        delete_customer $name
+    ;;
+    "addapp" )
+        create_app $name $namespace $domain_name $app_name $role $destination_host
+    ;;
+    "delapp" )
+        delete_app $name $app_name 
     ;;
     *)
         usage ;;
