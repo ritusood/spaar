@@ -40,11 +40,17 @@ function apply_cluster_namespace {
 function delete_cluster {
 #    local kubeconfig=$1
     local file=$1
-    local namespace=$2
     echo "Deleting from cluster: $file"
     kubectl delete -f $file 
 }
 
+function delete_cluster_namespace {
+#    local kubeconfig=$1
+    local file=$1
+    local namespace=$2
+    echo "Deleting from cluster: $file"
+    kubectl delete -f $file -n $namespace
+}
 
 function  install_prereq {
    local name=$1
@@ -175,7 +181,6 @@ function create_app {
    https_port=$(kubectl -n lbns get service istio-ingressgateway -o jsonpath='{.spec.ports[?(@.name=="https")].nodePort}')
    http="$appName.$domain:$http_port"
    https="$appName.$domain:$https_port"
-   echo $http $https
    
    appDomainName=$appName.$domain
    cat << NET > $WORKING_DIR/$appName-data.yaml
@@ -197,6 +202,7 @@ NET
     apply_cluster   $WORKING_DIR/$appName-cert.yaml
     # Apply app istio resources including authorization
     apply_cluster   $WORKING_DIR/$appName-istio.yaml
+    echo "Use URL --> $http $https"
 }
 
 function delete_app {
@@ -222,10 +228,11 @@ function create_customer {
 
 function delete_customer {
     local name=$1
+    local namespace=$2
 
     delete_cluster $WORKING_DIR/outer-istio.yaml
     delete_cluster $WORKING_DIR/kncc-istio-cm.yaml
-    delete_cluster $WORKING_DIR/oauth2-proxy.yaml
+    delete_cluster_namespace $WORKING_DIR/oauth2-proxy.yaml $namespace
     delete_cluster $WORKING_DIR/keycloak.yaml
     delete_cluster $WORKING_DIR/keycloak-cm.yaml
     delete_cluster $WORKING_DIR/istio-gateway.yaml
@@ -244,7 +251,6 @@ function install_yq_locally {
 fi
 }
 
-echo "Hi"
 name="oops"
 namespace="oops"
 # list of colon sperated values
@@ -295,7 +301,7 @@ case "$1" in
         echo "Done create!!!"        
         ;;
     "delete" )
-        delete_customer $name
+        delete_customer $name $namespace
     ;;
     "addapp" )
         create_app $name $namespace $domain_name $app_name $role $destination_host

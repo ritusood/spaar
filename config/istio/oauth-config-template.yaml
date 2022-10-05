@@ -5,7 +5,7 @@ kind: AuthorizationPolicy
 apiVersion: security.istio.io/v1beta1
 metadata:
   name: ext-authz-oauth2-proxy
-  namespace: {{ strings.Quote (datasource "data").namespace }}
+  namespace: istio-system
 spec:
   selector:
     matchLabels:
@@ -24,7 +24,7 @@ apiVersion: networking.istio.io/v1alpha3
 kind: Gateway
 metadata:
   name: redirect-gateway
-  namespace: {{ (datasource "data").namespace }}
+  namespace: istio-system
 spec:
   selector:
     istio: ingressgateway
@@ -49,7 +49,7 @@ spec:
 apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
 metadata:
-  namespace: {{ (datasource "data").namespace }}
+  namespace: istio-system
   name: redirect-vs
 spec:
   hosts:
