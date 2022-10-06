@@ -173,9 +173,8 @@ Create namespace for the customer
 ### Certs
 
 ```
- helm repo add jetstack https://charts.jetstack.io
 
-
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.9.1/cert-manager.yaml
 ```
 
 
@@ -209,7 +208,9 @@ helm install --namespace c1-ns --values oauth2-proxy-config.svc.yaml oauth2-prox
 ```
 
  wget https://github.com/hairyhenderson/gomplate/releases/download/v3.11.2/gomplate_linux-amd64
-  mv gomplate_linux-amd64 gomplate
+  mv gomplate_linux-amd64 /usr/local/bin/gomplate
+
+  sudo apt-get install jq
 
 
 gomplate -d data=./inner/c1/keycloak-data.yaml -f ./keycloak/keycloak.yaml | kubectl apply -f -

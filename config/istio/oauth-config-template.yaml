@@ -24,7 +24,7 @@ apiVersion: networking.istio.io/v1alpha3
 kind: Gateway
 metadata:
   name: redirect-gateway
-  namespace: istio-system
+  namespace: {{ (datasource "data").namespace }}
 spec:
   selector:
     istio: ingressgateway
@@ -49,7 +49,7 @@ spec:
 apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
 metadata:
-  namespace: istio-system
+  namespace: {{ (datasource "data").namespace }}
   name: redirect-vs
 spec:
   hosts:

@@ -14,8 +14,8 @@ function global_install {
    apply_cluster   ./certs/clusterissuer.yaml
    if [[ $(kubectl get ns lbns)  ]]; then
       echo "Namespace lbns exists"
-   else  
-      kubectl create ns lbns 
+   else
+      kubectl create ns lbns
       echo "Namespace lbns created"
    fi
    helm install istio-ingressgateway -n lbns istio/gateway
@@ -26,7 +26,7 @@ function apply_cluster {
     local file=$1
     echo "Applying to cluster: $file"
     kubectl apply -f $file
-    
+
 }
 
 function apply_cluster_namespace {
@@ -41,7 +41,7 @@ function delete_cluster {
 #    local kubeconfig=$1
     local file=$1
     echo "Deleting from cluster: $file"
-    kubectl delete -f $file 
+    kubectl delete -f $file
 }
 
 function delete_cluster_namespace {
@@ -60,8 +60,8 @@ function  install_prereq {
    echo "install_prereq"
    if [[ $(kubectl get ns $namespace)  ]]; then
       echo "Namespace $namespace exists"
-   else  
-      kubectl create ns $namespace 
+   else
+      kubectl create ns $namespace
       echo "Namespace $namespace created"
    fi
    # Create Data file
@@ -71,10 +71,10 @@ function  install_prereq {
    helm template istio-ingressgateway -n $namespace istio/gateway > $WORKING_DIR/istio-gateway.yaml
    kubectl create cm -n $namespace keycloak-configmap --from-file=$WORKING_DIR/realm.json -o yaml --dry-run=client > $WORKING_DIR/keycloak-cm.yaml
    gomplate -d data=$WORKING_DIR/data.yaml -f ./keycloak/keycloak.yaml > $WORKING_DIR/keycloak.yaml
-   
+
    #Create namespace and cert issuer for the customer
     apply_cluster   $WORKING_DIR/ca-issuer.yaml
-    #Install Istio 
+    #Install Istio
     apply_cluster   $WORKING_DIR/istio-gateway.yaml
     #Install Keycloak cm
     apply_cluster   $WORKING_DIR/keycloak-cm.yaml
@@ -107,14 +107,14 @@ function  generate_data {
     local namespace=$2
     local domains=$3
 
- 
+
     http_port=$(kubectl -n lbns get service istio-ingressgateway -o jsonpath='{.spec.ports[?(@.name=="http2")].nodePort}')
     https_port=$(kubectl -n lbns get service istio-ingressgateway -o jsonpath='{.spec.ports[?(@.name=="https")].nodePort}')
     http="http://$domains:$http_port/*"
     https="https://$domains:$https_port/*"
     echo $http $https
     jq '.realm = '\"$name\"' | .clients[].redirectUris[0] = '\"$http\"' | .clients[].redirectUris[1] = '\"$https\"''  keycloak/realm.json  > $WORKING_DIR/realm.json
-    
+
     whitelistDomains=.$domains:*
     redirectUrl="https://$domains:$https_port/oauth2/callback"
     istioHosts='"'*.$domains'"'
@@ -135,7 +135,7 @@ function generate_oauth2_data {
     local namespace=$2
 
     clientID="oauth2-proxy-$namespace"
-    hosts=`hostname -I` 
+    hosts=`hostname -I`
     echo $hosts
     hostip=$(echo $hosts | cut -d ' ' -f1| tr -d ' ')
     echo $hostip
@@ -181,7 +181,7 @@ function create_app {
    https_port=$(kubectl -n lbns get service istio-ingressgateway -o jsonpath='{.spec.ports[?(@.name=="https")].nodePort}')
    http="$appName.$domain:$http_port"
    https="$appName.$domain:$https_port"
-   
+
    appDomainName=$appName.$domain
    cat << NET > $WORKING_DIR/$appName-data.yaml
 namespace: $namespace
@@ -213,7 +213,7 @@ function delete_app {
     rm $WORKING_DIR/$appName-*.yaml
 }
 
-function create_customer {
+function create_packages {
    local name=$1
    local namespace=$2
    local domains=$3
@@ -222,21 +222,33 @@ function create_customer {
    mkdir -p $WORKING_DIR
    install_prereq $name $namespace $domains
    install_oauth2 $name $namespace
-   install_istio_policies $name
-
 }
 
-function delete_customer {
+function create_istio {
+   local name=$1
+   local namespace=$2
+   local domains=$3
+
+   install_istio_policies $name
+}
+
+function delete_packages {
     local name=$1
     local namespace=$2
 
-    delete_cluster $WORKING_DIR/outer-istio.yaml
-    delete_cluster $WORKING_DIR/kncc-istio-cm.yaml
     delete_cluster_namespace $WORKING_DIR/oauth2-proxy.yaml $namespace
     delete_cluster $WORKING_DIR/keycloak.yaml
     delete_cluster $WORKING_DIR/keycloak-cm.yaml
     delete_cluster $WORKING_DIR/istio-gateway.yaml
     delete_cluster $WORKING_DIR/ca-issuer.yaml
+}
+function delete_istio {
+    local name=$1
+    local namespace=$2
+
+    delete_cluster $WORKING_DIR/outer-istio.yaml
+    delete_cluster $WORKING_DIR/kncc-istio-cm.yaml
+
 }
 
 # Install yq for parsing yaml files. It installs it locally (current folder) if it is not
@@ -284,6 +296,44 @@ WORKING_DIR=/tmp/$name
 case "$1" in
      "prepare" )
         global_install;;
+    "createPackages" )
+        if [ "${name}" == "oops" ] ; then
+            echo -e "ERROR - Customer name is required"
+            exit
+        fi
+        if [ "${namespace}" == "oops"  ] ; then
+            echo -e "Error - Namespace is required"
+            exit
+        fi
+        if [ "${domain_name}" == "oops" ] ; then
+            echo -e "Atleast one 1 domain name must be provided"
+            exit
+        fi
+        create_packages $name $namespace $domain_name
+        echo "Done create!!!"
+        ;;
+     "createIstio" )
+        if [ "${name}" == "oops" ] ; then
+            echo -e "ERROR - Customer name is required"
+            exit
+        fi
+        if [ "${namespace}" == "oops"  ] ; then
+            echo -e "Error - Namespace is required"
+            exit
+        fi
+        if [ "${domain_name}" == "oops" ] ; then
+            echo -e "Atleast one 1 domain name must be provided"
+            exit
+        fi
+        create_istio $name $namespace $domain_name
+        echo "Done create!!!"
+        ;;
+    "deletePackages" )
+        delete_packages $name $namespace
+        ;;
+     "deleteIstio" )
+        delete_istio $name $namespace
+        ;;
      "create" )
         if [ "${name}" == "oops" ] ; then
             echo -e "ERROR - Customer name is required"
@@ -297,17 +347,19 @@ case "$1" in
             echo -e "Atleast one 1 domain name must be provided"
             exit
         fi
-        create_customer $name $namespace $domain_name
-        echo "Done create!!!"        
+        create_packages $name $namespace $domain_name
+        create_istio $name $namespace $domain_name
+        echo "Done create!!!"
         ;;
     "delete" )
-        delete_customer $name $namespace
+        delete_istio $name $namespace
+        delete_packages $name $namespace
     ;;
     "addapp" )
         create_app $name $namespace $domain_name $app_name $role $destination_host
     ;;
     "delapp" )
-        delete_app $name $app_name 
+        delete_app $name $app_name
     ;;
     *)
         usage ;;
