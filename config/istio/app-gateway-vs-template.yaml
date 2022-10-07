@@ -6,7 +6,7 @@ metadata:
   namespace: {{ (datasource "data").namespace }}
 spec:
   selector:
-    istio: ingressgateway
+    istio: ingressgateway-{{ (datasource "data").customerName }}
   servers:
   - port:
       number: 80

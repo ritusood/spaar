@@ -11,6 +11,7 @@ KUBE_PATH=/home/vagrant/.kube/config
 WORKING_DIR=/tmp
 
 function global_install {
+
    apply_cluster   ./certs/clusterissuer.yaml
    if [[ $(kubectl get ns lbns)  ]]; then
       echo "Namespace lbns exists"
@@ -18,7 +19,7 @@ function global_install {
       kubectl create ns lbns
       echo "Namespace lbns created"
    fi
-   helm install istio-ingressgateway -n lbns istio/gateway
+   helm install istio-ingressgateway-lb -n lbns istio/gateway
 }
 
 function apply_cluster {
@@ -68,7 +69,7 @@ function  install_prereq {
    generate_data $name $namespace $domains
    # Create yamls for ca-issuer, istio-gateway and keycloak
    gomplate -d data=$WORKING_DIR/data.yaml -f ./certs/ca-template.yaml > $WORKING_DIR/ca-issuer.yaml
-   helm template istio-ingressgateway -n $namespace istio/gateway > $WORKING_DIR/istio-gateway.yaml
+   helm template istio-ingressgateway-$name -n $namespace istio/gateway > $WORKING_DIR/istio-gateway.yaml
    kubectl create cm -n $namespace keycloak-configmap --from-file=$WORKING_DIR/realm.json -o yaml --dry-run=client > $WORKING_DIR/keycloak-cm.yaml
    gomplate -d data=$WORKING_DIR/data.yaml -f ./keycloak/keycloak.yaml > $WORKING_DIR/keycloak.yaml
 
@@ -98,7 +99,6 @@ function  install_oauth2 {
     #Install oauth2-proxy
     apply_cluster_namespace   $WORKING_DIR/oauth2-proxy.yaml $namespace
     #Update the istio cm with kncc
-    apply_cluster   $WORKING_DIR/kncc-istio-cm.yaml
 }
 
 
@@ -108,8 +108,8 @@ function  generate_data {
     local domains=$3
 
 
-    http_port=$(kubectl -n lbns get service istio-ingressgateway -o jsonpath='{.spec.ports[?(@.name=="http2")].nodePort}')
-    https_port=$(kubectl -n lbns get service istio-ingressgateway -o jsonpath='{.spec.ports[?(@.name=="https")].nodePort}')
+    http_port=$(kubectl -n lbns get service istio-ingressgateway-lb -o jsonpath='{.spec.ports[?(@.name=="http2")].nodePort}')
+    https_port=$(kubectl -n lbns get service istio-ingressgateway-lb -o jsonpath='{.spec.ports[?(@.name=="https")].nodePort}')
     http="http://$domains:$http_port/*"
     https="https://$domains:$https_port/*"
     echo $http $https
@@ -134,7 +134,7 @@ function generate_oauth2_data {
     local name=$1
     local namespace=$2
 
-    clientID="oauth2-proxy-$namespace"
+    clientID="oauth2-proxy"
     hosts=`hostname -I`
     echo $hosts
     hostip=$(echo $hosts | cut -d ' ' -f1| tr -d ' ')
@@ -177,8 +177,8 @@ function create_app {
    local role=$5
    local destinationHost=$6
 
-   http_port=$(kubectl -n lbns get service istio-ingressgateway -o jsonpath='{.spec.ports[?(@.name=="http2")].nodePort}')
-   https_port=$(kubectl -n lbns get service istio-ingressgateway -o jsonpath='{.spec.ports[?(@.name=="https")].nodePort}')
+   http_port=$(kubectl -n lbns get service istio-ingressgateway-lb -o jsonpath='{.spec.ports[?(@.name=="http2")].nodePort}')
+   https_port=$(kubectl -n lbns get service istio-ingressgateway-lb -o jsonpath='{.spec.ports[?(@.name=="https")].nodePort}')
    http="$appName.$domain:$http_port"
    https="$appName.$domain:$https_port"
 
@@ -229,6 +229,7 @@ function create_istio {
    local namespace=$2
    local domains=$3
 
+   apply_cluster   $WORKING_DIR/kncc-istio-cm.yaml
    install_istio_policies $name
 }
 
@@ -274,6 +275,7 @@ app_name="oops"
 role="oops"
 destination_host="oops"
 
+install_yq_locally
 while getopts ":v:" flag
 do
     case "${flag}" in
@@ -291,7 +293,6 @@ done
 echo $name $namespace $domain_name $pop_location $dedicated_gateway
 shift $((OPTIND-1))
 
-install_yq_locally
 WORKING_DIR=/tmp/$name
 case "$1" in
      "prepare" )

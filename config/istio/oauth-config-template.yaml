@@ -5,11 +5,11 @@ kind: AuthorizationPolicy
 apiVersion: security.istio.io/v1beta1
 metadata:
   name: ext-authz-oauth2-proxy
-  namespace: istio-system
+  namespace: {{ (datasource "data").namespace }}
 spec:
   selector:
     matchLabels:
-      istio: ingressgateway
+      istio: ingressgateway-{{ (datasource "data").customerName }}
   action: CUSTOM
   provider:
     name: oauth2-proxy-{{ (datasource "data").namespace }}
@@ -27,14 +27,14 @@ metadata:
   namespace: {{ (datasource "data").namespace }}
 spec:
   selector:
-    istio: ingressgateway
+    istio: ingressgateway-{{ (datasource "data").customerName }}
   servers:
   - port:
       number: 80
       name: http
       protocol: HTTP
     hosts:
-    - {{ strings.Quote (datasource "data").istioHosts }}
+    - {{ strings.Quote (datasource "data").domainName }}
   - port:
       number: 443
       name: https
@@ -43,7 +43,7 @@ spec:
       mode: SIMPLE
       credentialName: {{ (datasource "data").customerName }}
     hosts:
-    - {{ strings.Quote (datasource "data").istioHosts }}
+    - {{ strings.Quote (datasource "data").domainName }}
 
 ---
 apiVersion: networking.istio.io/v1alpha3
@@ -53,7 +53,7 @@ metadata:
   name: redirect-vs
 spec:
   hosts:
-  - {{ strings.Quote (datasource "data").istioHosts }}
+  - {{ strings.Quote (datasource "data").domainName }}
   gateways:
   - redirect-gateway
   http:

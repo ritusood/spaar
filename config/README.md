@@ -54,6 +54,38 @@ b.	Add Authorization policy for the role
 
 ## Setup environment
 
+### Install Kubernetes
+
+sudo apt update
+    3  sudo apt install software-properties-common curl gnupg
+    4  sudo apt-get install docker.io
+    5  sudo systemctl status docker
+     12  sudo vi /etc/docker/daemon.json
+   13  sudo systemctl status docker
+   14  sudo systemctl daemon-reload
+	   15  sudo systemctl restart docker
+   18  sudo systemctl status docker
+curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add
+    7  sudo apt-add-repository "deb http://apt.kubernetes.io/ kubernetes-xenial main"
+curl-shttps://packages.cloud.google.com/apt/dists/kubernetes-xenial/main/binary-amd64/Packages|grepVersion|awk'{print $2}'
+
+From <https://stackoverflow.com/questions/49721708/how-to-install-specific-version-of-kubernetes> 
+
+sudo apt-get install -q kubeadm=1.23.9-00
+sudo apt-get install -q kubelet=1.23.9-00
+sudo apt-get install -q kubectl=1.23.9-00
+
+    8  sudo apt-get install kubeadm kubelet kubectl
+    9  sudo apt-mark hold kubeadm kubelet kubectl
+   10  kubeadm version
+   11  sudo kubeadm init --pod-network-cidr=10.244.0.0/16
+
+kubectl taint node edge4 node-role.kubernetes.io/master:NoSchedule-
+{ "exec-opts": ["native.cgroupdriver=systemd"],
+  "insecure-registries": ["172.25.103.10:5000"]
+}
+
+
 ### Install helm
 
 ```
@@ -208,8 +240,8 @@ helm install --namespace c1-ns --values oauth2-proxy-config.svc.yaml oauth2-prox
 ```
 
  wget https://github.com/hairyhenderson/gomplate/releases/download/v3.11.2/gomplate_linux-amd64
-  mv gomplate_linux-amd64 /usr/local/bin/gomplate
-
+  sudo mv gomplate_linux-amd64 /usr/local/bin/gomplate
+  sudo chmod +x /usr/local/bin/gomplate
   sudo apt-get install jq
 
 
@@ -219,3 +251,5 @@ gomplate -d data=./inner/c1/keycloak-data.yaml -f ./keycloak/keycloak.yaml | kub
 
 
  helm install --namespace c1-ns --values inner/c1/oauth2-cfg.yaml oauth2-proxy oauth2-proxy/oauth2-proxy
+
+kubectl  get secrets root-secret -n c2ns -o yaml | grep ca.crt | awk '{print $2}' | base64 -d > /vagrant/ca.crt

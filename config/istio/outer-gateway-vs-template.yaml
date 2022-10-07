@@ -6,7 +6,7 @@ metadata:
   namespace: lbns
 spec:
   selector:
-    istio: ingressgateway
+    istio: ingressgateway-lb
   servers:
   - port:
       number: 80
@@ -37,7 +37,7 @@ spec:
   http:
   - route:
     - destination:
-        host: istio-ingressgateway.{{ (datasource "data").namespace }}.svc.cluster.local
+        host: istio-ingressgateway-{{ (datasource "data").customerName }}.{{ (datasource "data").namespace }}.svc.cluster.local
   tls:
   - match:
     - port: 443
@@ -45,7 +45,7 @@ spec:
       - {{ strings.Quote (datasource "data").istioHosts }}
     route:
     - destination:
-        host: istio-ingressgateway.{{ (datasource "data").namespace }}.svc.cluster.local
+        host: istio-ingressgateway-{{ (datasource "data").customerName }}.{{ (datasource "data").namespace }}.svc.cluster.local
         port:
           number: 443
 
