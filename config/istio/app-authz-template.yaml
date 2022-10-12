@@ -13,6 +13,4 @@ spec:
   - to:
     - operation:
         hosts: [{{ strings.Quote (datasource "data").http }}, {{ strings.Quote (datasource "data").https }}]
-    when:
-      - key: request.auth.claims[role]
-        values: [{{ strings.Quote (datasource "data").role }}]
+
