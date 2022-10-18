@@ -1,51 +1,144 @@
 {
-    "realm": "test",
-    "enabled": true,
-    "users": [
+  "realm": "test",
+  "enabled": true,
+  "users": [
+    {
+      "username": "keycloak",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "test"
+        }
+      ],
+      "realmRoles": [
+        "user"
+      ]
+    }
+  ],
+  "roles": {
+    "realm": [
       {
-        "username": "keycloak",
-        "enabled": true,
-        "credentials": [
-          {
-            "type": "password",
-            "value": "test"
-          }
-        ],
-        "realmRoles": [
-          "user"
-        ]
+        "name": "user",
+        "description": "User privileges"
+      },
+      {
+        "name": "admin",
+        "description": "Administrator privileges"
       }
     ],
-    "roles": {
-      "realm": [
+    "client": {
+      "oauth2-proxy": [
         {
-          "name": "user",
-          "description": "User privileges"
+          "name": "special",
+          "composite": false,
+          "clientRole": true,
+          "attributes": {}
         },
         {
-          "name": "admin",
-          "description": "Administrator privileges"
+          "name": "general",
+          "composite": false,
+          "clientRole": true,
+          "attributes": {}
         }
       ]
-    },
-    "defaultRoles": [
-      "user"
-    ],
-    "clients": [
-      {
-        "clientId": "oauth2-proxy",
-        "enabled": true,
-        "publicClient": false,
-        "clientAuthenticatorType": "client-secret",
-        "secret": "lsuaCKsXRCQ0gID8BZHYK8tfAMlxP1cR",
-        "redirectUris": [
-          "",
-          ""
-        ],
-        "webOrigins": [
-          "*"
-        ]
+    }
+  },
+  "defaultRoles": [
+    "user"
+  ],
+  "clients": [
+    {
+      "clientId": "oauth2-proxy",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "lsuaCKsXRCQ0gID8BZHYK8tfAMlxP1cR",
+      "redirectUris": [
+        "",
+        ""
+      ],
+      "webOrigins": [
+        "*"
+      ],
+      "protocolMappers": [
+        {
+          "name": "client roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-client-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "user_type",
+            "jsonType.label": "String",
+            "usermodel.clientRoleMapping.clientId": "oauth2-proxy"
+          }
+        }
+      ]
+    }
+  ],
+  "identityProviders": [
+    {
+      "alias": "KeycloakIDP",
+      "displayName": "",
+      "providerId": "oidc",
+      "enabled": true,
+      "updateProfileFirstLoginMode": "on",
+      "trustEmail": false,
+      "storeToken": false,
+      "addReadTokenRoleOnCreate": false,
+      "authenticateByDefault": false,
+      "linkOnly": false,
+      "firstBrokerLoginFlowAlias": "first broker login",
+      "config": {
+        "validateSignature": "false",
+        "clientId": "idp-client",
+        "tokenUrl": "http://192.168.121.192:30498/realms/users/protocol/openid-connect/token",
+        "authorizationUrl": "http://192.168.121.192:30498/realms/users/protocol/openid-connect/auth",
+        "clientAuthMethod": "clientAuth_post",
+        "clientSecret": "udRp9HVCrkmhZDIsbUuC5qszCEsuVT5D"
       }
-    ]
-  }
-  
+    }
+  ],
+  "identityProviderMappers": [
+    {
+      "name": "alice",
+      "identityProviderAlias": "KeycloakIDP",
+      "identityProviderMapper": "oidc-advanced-role-idp-mapper",
+      "config": {
+        "claims": "[{\"key\":\"given_name\",\"value\":\"alice\"}]",
+        "syncMode": "INHERIT",
+        "are.claim.values.regex": "false",
+        "attributes": "[]",
+        "role": "oauth2-proxy.general"
+      }
+    },
+    {
+      "name": "bob",
+      "identityProviderAlias": "KeycloakIDP",
+      "identityProviderMapper": "oidc-advanced-role-idp-mapper",
+      "config": {
+        "claims": "[{\"key\":\"given_name\",\"value\":\"bob\"}]",
+        "syncMode": "INHERIT",
+        "are.claim.values.regex": "false",
+        "attributes": "[]",
+        "role": "oauth2-proxy.general"
+      }
+    },
+    {
+      "name": "special",
+      "identityProviderAlias": "KeycloakIDP",
+      "identityProviderMapper": "oidc-advanced-role-idp-mapper",
+      "config": {
+        "claims": "[{\"key\":\"given_name\",\"value\":\"andrew\"}]",
+        "syncMode": "INHERIT",
+        "are.claim.values.regex": "false",
+        "attributes": "[]",
+        "role": "oauth2-proxy.special"
+      }
+    }
+  ]
+}

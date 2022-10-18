@@ -253,3 +253,7 @@ gomplate -d data=./inner/c1/keycloak-data.yaml -f ./keycloak/keycloak.yaml | kub
  helm install --namespace c1-ns --values inner/c1/oauth2-cfg.yaml oauth2-proxy oauth2-proxy/oauth2-proxy
 
 kubectl  get secrets root-secret -n c2ns -o yaml | grep ca.crt | awk '{print $2}' | base64 -d > /vagrant/ca.crt
+
+
+ curl --location --request POST 'http://192.168.121.187:32598/realms/customer1/protocol/openid-connect/token' --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'grant_type=client_credentials' --data-urlencode 'client_id=oauth2-proxy'  --data-urlencode 'client_secret=lsuaCKsXRCQ0gID8BZHYK8tfAMlxP1cR'
+ 

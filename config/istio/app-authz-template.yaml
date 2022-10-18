@@ -13,4 +13,8 @@ spec:
   - to:
     - operation:
         hosts: [{{ strings.Quote (datasource "data").http }}, {{ strings.Quote (datasource "data").https }}]
+    when:
+      - key: request.auth.claims[user_type]
+        values: ["general"]
+
 
