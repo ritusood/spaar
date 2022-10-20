@@ -44,9 +44,6 @@
       ]
     }
   },
-  "defaultRoles": [
-    "user"
-  ],
   "clients": [
     {
       "clientId": "oauth2-proxy",
@@ -96,8 +93,8 @@
       "config": {
         "validateSignature": "false",
         "clientId": "idp-client",
-        "tokenUrl": "http://192.168.121.192:30498/realms/users/protocol/openid-connect/token",
-        "authorizationUrl": "http://192.168.121.192:30498/realms/users/protocol/openid-connect/auth",
+        "tokenUrl": "",
+        "authorizationUrl": "",
         "clientAuthMethod": "clientAuth_post",
         "clientSecret": "udRp9HVCrkmhZDIsbUuC5qszCEsuVT5D"
       }
@@ -110,7 +107,7 @@
       "identityProviderMapper": "oidc-advanced-role-idp-mapper",
       "config": {
         "claims": "[{\"key\":\"given_name\",\"value\":\"alice\"}]",
-        "syncMode": "INHERIT",
+        "syncMode": "FORCE",
         "are.claim.values.regex": "false",
         "attributes": "[]",
         "role": "oauth2-proxy.general"
@@ -122,7 +119,7 @@
       "identityProviderMapper": "oidc-advanced-role-idp-mapper",
       "config": {
         "claims": "[{\"key\":\"given_name\",\"value\":\"bob\"}]",
-        "syncMode": "INHERIT",
+        "syncMode": "FORCE",
         "are.claim.values.regex": "false",
         "attributes": "[]",
         "role": "oauth2-proxy.general"
@@ -134,7 +131,7 @@
       "identityProviderMapper": "oidc-advanced-role-idp-mapper",
       "config": {
         "claims": "[{\"key\":\"given_name\",\"value\":\"andrew\"}]",
-        "syncMode": "INHERIT",
+        "syncMode": "FORCE",
         "are.claim.values.regex": "false",
         "attributes": "[]",
         "role": "oauth2-proxy.special"

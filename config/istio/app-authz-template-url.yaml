@@ -1,0 +1,20 @@
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-user-{{(datasource "data").index }}
+  namespace: {{ (datasource "data").namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: istio-ingressgateway-{{ (datasource "data").customerName }}
+  action: ALLOW
+  rules:
+  - to:
+    - operation:
+        paths: [{{ strings.Quote (datasource "data").url }}]
+    when:
+      - key: request.auth.claims[role]
+        values: [{{ strings.Quote (datasource "data").role }}]
+
+
