@@ -1,6 +1,0 @@
-name: customer3
-namespace: c3ns 
-domain: customer3.com
-app: app1
-host: httpbin.bar.cluster2
-
