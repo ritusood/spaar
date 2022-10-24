@@ -1,0 +1,7 @@
+name: customer2
+namespace: c2ns 
+index: 4
+app: app2
+role: special
+url: /v2/projects 
+

@@ -58,10 +58,10 @@ index: $index
 url: $url
 role: $role
 NET
-   gomplate -d data=$WORKING_DIR/$appName/$appName-$index-role-data.yaml -f ./istio/app-authz-template-url.yaml > $WORKING_DIR/$appName/$appName-$index-istio.yaml
+    gomplate -d data=$WORKING_DIR/$appName/$appName-$index-role-data.yaml -f ./istio/app-authz-template-url.yaml > $WORKING_DIR/$appName/$appName-$index-istio.yaml
 
     # Apply app istio authorizations
-    #apply_cluster   $WORKING_DIR/$appName/$appName-$index-istio.yaml
+    apply_cluster   $WORKING_DIR/$appName/$appName-$index-istio.yaml
 }
 
 function delete_authz {

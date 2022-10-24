@@ -1,0 +1,7 @@
+name: customer1
+namespace: c1ns 
+index: 4
+app: app2
+role: special
+url: /v2/projects 
+

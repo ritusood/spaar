@@ -1,0 +1,6 @@
+name: customer2
+namespace: c2ns 
+domain: customer2.com
+app: app2
+host: emco.cluster3
+

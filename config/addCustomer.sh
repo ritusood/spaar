@@ -46,7 +46,6 @@ function  install_prereq {
    local domains=$3
    local idp_server=$4
 
-   echo "install_prereq"
    if [[ $(kubectl get ns $namespace)  ]]; then
       echo "Namespace $namespace exists"
    else
@@ -63,6 +62,7 @@ function  install_prereq {
     
     if [ "${resouces_only}" == "false" ] ; then
     #Create namespace and cert issuer for the customer
+        echo "install Istio Ingress and Keycloak broker"
         apply_cluster   $WORKING_DIR/ca-issuer.yaml
         #Install Istio
         apply_cluster   $WORKING_DIR/istio-gateway.yaml
@@ -77,7 +77,7 @@ function  install_oauth2 {
    local name=$1
    local namespace=$2
 
-   echo "install_oauth2"
+   
    generate_oauth2_data $name $namespace
    # Install oauth2-proxy for the customer
    gomplate -d data=$WORKING_DIR/data.yaml -f ./oath2-proxy/oauth2-proxy-template.yaml > $WORKING_DIR/oauth2-cfg-data.yaml
@@ -85,6 +85,7 @@ function  install_oauth2 {
    # Apply KNCC CR to update Istio Configmap for the newly installed oath2-proxy
    gomplate -d data=$WORKING_DIR/data.yaml -f ./oath2-proxy/configctrl.yaml > $WORKING_DIR/kncc-istio-cm.yaml
     if [ "${resouces_only}" == "false" ] ; then
+        echo "install_oauth2"
         #Install oauth2-proxy
         apply_cluster_namespace   $WORKING_DIR/oauth2-proxy.yaml $namespace
     fi
@@ -101,7 +102,6 @@ function  generate_data {
     https_port=$(kubectl -n lbns get service istio-ingressgateway-lb -o jsonpath='{.spec.ports[?(@.name=="https")].nodePort}')
     http="http://$domains:$http_port/*"
     https="https://$domains:$https_port/*"
-    echo $http $https
     token_url="http://$idp_server/realms/users/protocol/openid-connect/token"
     authorization_url="http://$idp_server/realms/users/protocol/openid-connect/auth"
     jq '.realm = '\"$name\"' | .clients[].redirectUris[0] = '\"$http\"' | .clients[].redirectUris[1] = '\"$https\"' | .identityProviders[].config.tokenUrl = '\"$token_url\"' | .identityProviders[].config.authorizationUrl = '\"$authorization_url\"''  keycloak/realm.json  > $WORKING_DIR/realm.json
@@ -127,11 +127,8 @@ function generate_oauth2_data {
 
     clientID="oauth2-proxy"
     hosts=`hostname -I`
-    echo $hosts
     hostip=$(echo $hosts | cut -d ' ' -f1| tr -d ' ')
-    echo $hostip
     kc_port=$(kubectl -n $namespace get service keycloak -o jsonpath='{.spec.ports[?(@.name=="http")].nodePort}')
-    echo $hostip:$kc_port
     oidcIssuerUrl="http://$hostip:$kc_port/realms/$name"
     redeemUrl="$oidcIssuerUrl/protocol/openid-connect/token"
     jwksUri="$oidcIssuerUrl/protocol/openid-connect/certs"
@@ -233,7 +230,7 @@ do
            idp_server=$(yq eval '.idp' $values);;
     esac
 done
-echo $name $namespace $domain_name $pop_location $dedicated_gateway $resouces_only 
+
 shift $((OPTIND-1))
 WORKING_DIR=/tmp/$name
 case "$1" in

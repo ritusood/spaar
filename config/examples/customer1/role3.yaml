@@ -1,0 +1,7 @@
+name: customer1
+namespace: c1ns 
+index: 3
+app: app1
+role: special
+url: /headers 
+

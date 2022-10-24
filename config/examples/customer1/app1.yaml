@@ -1,0 +1,6 @@
+name: customer1
+namespace: c1ns 
+domain: customer1.com
+app: app1
+host: httpbin.bar.cluster2
+

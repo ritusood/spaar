@@ -14,7 +14,7 @@ spec:
     - operation:
         paths: [{{ strings.Quote (datasource "data").url }}]
     when:
-      - key: request.auth.claims[role]
+      - key: request.auth.claims[user_type]
         values: [{{ strings.Quote (datasource "data").role }}]
 
 

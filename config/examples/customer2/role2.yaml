@@ -1,0 +1,7 @@
+name: customer2
+namespace: c2ns 
+index: 2
+app: app1
+role: special
+url: /image 
+

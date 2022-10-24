@@ -1,0 +1,5 @@
+name: customer1
+namespace: c1ns 
+domain: customer1.com
+idp: 192.168.121.192:30498
+
